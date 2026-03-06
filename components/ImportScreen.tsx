@@ -190,6 +190,15 @@ Garrosh|Warrior|Arms|616|2500`;
               </div>
             )}
 
+            {(() => {
+              const unknownCount = players.filter((p) => !SPECS_BY_CLASS[p.class].includes(p.spec)).length;
+              return unknownCount > 0 ? (
+                <div className="mb-4 p-3 rounded-md text-sm" style={{ background: '#1a1400', border: '1px solid var(--warning)', color: '#fbbf24' }}>
+                  ⚠ {unknownCount} player{unknownCount > 1 ? 's have' : ' has'} an unknown spec. Select the correct spec for each highlighted row before generating groups.
+                </div>
+              ) : null;
+            })()}
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -203,91 +212,117 @@ Garrosh|Warrior|Arms|616|2500`;
                   </tr>
                 </thead>
                 <tbody>
-                  {players.map((p) => (
-                    <tr
-                      key={p.id}
-                      style={{ borderBottom: '1px solid var(--border-subtle)' }}
-                    >
-                      <td className="py-2 pr-3">
-                        <span style={{ color: CLASS_COLORS[p.class], fontFamily: 'var(--font-cinzel), serif' }} className="text-sm">
-                          {p.name}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <select
-                          value={p.class}
-                          onChange={(e) => updatePlayer(p.id, 'class', e.target.value)}
-                          className="text-sm rounded px-1 py-0.5"
-                          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: CLASS_COLORS[p.class] }}
-                        >
-                          {CLASSES.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <select
-                          value={SPECS_BY_CLASS[p.class].includes(p.spec) ? p.spec : SPECS_BY_CLASS[p.class][0]}
-                          onChange={(e) => updatePlayer(p.id, 'spec', e.target.value)}
-                          className="text-sm rounded px-1 py-0.5"
-                          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                        >
-                          {SPECS_BY_CLASS[p.class].map((s) => (
-                            <option key={s} value={s}>{displayName(s)}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <span className="capitalize text-xs px-2 py-0.5 rounded" style={{
-                          background: p.role === 'tank' ? '#1a3a5c' : p.role === 'healer' ? '#1a3a1a' : '#3a1a1a',
-                          color: p.role === 'tank' ? '#60a5fa' : p.role === 'healer' ? '#4ade80' : '#f87171',
-                          border: `1px solid ${p.role === 'tank' ? '#2563eb44' : p.role === 'healer' ? '#16a34a44' : '#dc262644'}`,
-                        }}>
-                          {p.role}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="number"
-                          value={p.ilvl}
-                          onChange={(e) => updatePlayer(p.id, 'ilvl', parseInt(e.target.value) || 0)}
-                          className="text-sm rounded px-2 py-0.5 w-16"
-                          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                        />
-                      </td>
-                      <td className="py-2">
-                        <input
-                          type="number"
-                          value={p.rating}
-                          onChange={(e) => updatePlayer(p.id, 'rating', parseInt(e.target.value) || 0)}
-                          className="text-sm rounded px-2 py-0.5 w-20"
-                          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {players.map((p) => {
+                    const specUnknown = !SPECS_BY_CLASS[p.class].includes(p.spec);
+                    return (
+                      <tr
+                        key={p.id}
+                        style={{
+                          borderBottom: '1px solid var(--border-subtle)',
+                          background: specUnknown ? 'rgba(245,158,11,0.06)' : undefined,
+                        }}
+                      >
+                        <td className="py-2 pr-3">
+                          <span style={{ color: CLASS_COLORS[p.class], fontFamily: 'var(--font-cinzel), serif' }} className="text-sm">
+                            {p.name}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3">
+                          <select
+                            value={p.class}
+                            onChange={(e) => updatePlayer(p.id, 'class', e.target.value)}
+                            className="text-sm rounded px-1 py-0.5"
+                            style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: CLASS_COLORS[p.class] }}
+                          >
+                            {CLASSES.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-2 pr-3">
+                          <select
+                            value={specUnknown ? '' : p.spec}
+                            onChange={(e) => updatePlayer(p.id, 'spec', e.target.value)}
+                            className="text-sm rounded px-1 py-0.5"
+                            style={{
+                              background: 'var(--bg-elevated)',
+                              border: `1px solid ${specUnknown ? 'var(--warning)' : 'var(--border-subtle)'}`,
+                              color: specUnknown ? 'var(--warning)' : 'var(--text-primary)',
+                            }}
+                          >
+                            {specUnknown && (
+                              <option value="" disabled>— Select spec —</option>
+                            )}
+                            {SPECS_BY_CLASS[p.class].map((s) => (
+                              <option key={s} value={s}>{displayName(s)}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-2 pr-3">
+                          {specUnknown ? (
+                            <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#1a1400', color: 'var(--warning)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                              ?
+                            </span>
+                          ) : (
+                            <span className="capitalize text-xs px-2 py-0.5 rounded" style={{
+                              background: p.role === 'tank' ? '#1a3a5c' : p.role === 'healer' ? '#1a3a1a' : '#3a1a1a',
+                              color: p.role === 'tank' ? '#60a5fa' : p.role === 'healer' ? '#4ade80' : '#f87171',
+                              border: `1px solid ${p.role === 'tank' ? '#2563eb44' : p.role === 'healer' ? '#16a34a44' : '#dc262644'}`,
+                            }}>
+                              {p.role}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <input
+                            type="number"
+                            value={p.ilvl}
+                            onChange={(e) => updatePlayer(p.id, 'ilvl', parseInt(e.target.value) || 0)}
+                            className="text-sm rounded px-2 py-0.5 w-16"
+                            style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                          />
+                        </td>
+                        <td className="py-2">
+                          <input
+                            type="number"
+                            value={p.rating}
+                            onChange={(e) => updatePlayer(p.id, 'rating', parseInt(e.target.value) || 0)}
+                            className="text-sm rounded px-2 py-0.5 w-20"
+                            style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            <div className="mt-5 flex gap-3">
-              <button
-                onClick={() => onConfirm(players)}
-                disabled={players.length === 0}
-                className="px-6 py-2 rounded-md text-sm font-semibold transition-all disabled:opacity-40"
-                style={{
-                  background: 'linear-gradient(180deg, var(--gold-primary) 0%, var(--gold-dim) 100%)',
-                  color: '#0a0b0d',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
-                  fontFamily: 'var(--font-cinzel), serif',
-                }}
-              >
-                Generate Groups →
-              </button>
-              <span className="self-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                {Math.floor(players.length / 5)} groups · {players.length % 5} bench
-              </span>
-            </div>
+            {(() => {
+              const unknownCount = players.filter((p) => !SPECS_BY_CLASS[p.class].includes(p.spec)).length;
+              const canGenerate = players.length > 0 && unknownCount === 0;
+              return (
+                <div className="mt-5 flex gap-3 items-center">
+                  <button
+                    onClick={() => onConfirm(players)}
+                    disabled={!canGenerate}
+                    title={unknownCount > 0 ? `Resolve ${unknownCount} unknown spec${unknownCount > 1 ? 's' : ''} first` : undefined}
+                    className="px-6 py-2 rounded-md text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'linear-gradient(180deg, var(--gold-primary) 0%, var(--gold-dim) 100%)',
+                      color: '#0a0b0d',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
+                      fontFamily: 'var(--font-cinzel), serif',
+                    }}
+                  >
+                    Generate Groups →
+                  </button>
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {Math.floor(players.length / 5)} groups · {players.length % 5} bench
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

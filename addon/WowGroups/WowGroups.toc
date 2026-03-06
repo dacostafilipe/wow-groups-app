@@ -1,0 +1,7 @@
+## Interface: 110105
+## Title: WowGroups
+## Notes: Export your group roster for the wow-groups organizer app.
+## Author:
+## Version: 1.0.0
+
+WowGroups.lua

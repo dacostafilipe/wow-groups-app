@@ -11,50 +11,49 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Setting Up Icons (required for class/spec images)
+---
 
-Icons are downloaded once from the official Blizzard Game Data API and stored locally. The app makes no external requests at runtime.
+## WowGroups Addon
 
-### 1. Get Battle.net API credentials
+The addon lets the raid leader export the group roster directly from the game and paste it into the web app.
 
-1. Go to [https://develop.battle.net](https://develop.battle.net) and sign in with your Battle.net account
-2. Click **Create Client** and fill in the form:
-   - **Client Name:** anything (e.g. `wow-groups`)
-   - **Redirect URIs:** `http://localhost` (required but not used)
-   - **Service URL:** optional
-   - **Intended Use:** select *Game Data APIs*
-3. After creating the client, copy the **Client ID** and **Client Secret** from the client detail page
+### Installation
 
-### 2. Configure your credentials
+1. Locate your WoW AddOns directory:
 
-```bash
-cp .env.example .env
-```
+   | OS | Path |
+   |---|---|
+   | Windows | `C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns\` |
+   | macOS | `/Applications/World of Warcraft/_retail_/Interface/AddOns/` |
 
-Edit `.env` and fill in your values:
+2. Copy the addon folder into that directory:
 
-```
-BNET_CLIENT_ID=your_client_id_here
-BNET_CLIENT_SECRET=your_client_secret_here
-BNET_REGION=eu   # or us, kr, tw
-```
+   ```
+   addon/WowGroups/  →  .../Interface/AddOns/WowGroups/
+   ```
 
-### 3. Run the download script
+   The result should look like:
 
-```bash
-node scripts/download-assets.js
-```
+   ```
+   AddOns/
+     WowGroups/
+       WowGroups.toc
+       WowGroups.lua
+   ```
 
-This fetches all class and spec icons and saves them to `public/icons/`. The script is safe to re-run — it skips files that already exist.
+3. Launch (or reload) the game and enable **WowGroups** in the AddOns list on the character selection screen.
 
-Icons are committed to the repo so this step only needs to be done once (or when new classes/specs are added to the game).
+### Usage
 
-## Deployment
+- Click the **minimap button** (upper-right area by default, draggable) or type `/wowgroups` / `/wg` in chat.
+- The frame opens and automatically starts collecting data from all raid/party members.
+- Wait for the status to show **Done** — inspection takes ~0.5 s per player.
+- Click **Select All**, then **Ctrl+C** to copy the roster text.
+- Paste it into the web app's Roster Import screen.
 
-Deploy to Vercel with zero configuration:
+### Notes
 
-```bash
-npx vercel
-```
+- All players must be in the same **raid or party group** before exporting.
+- Members out of inspect range will appear with `ilvl=0` and `rating=0`; these can be corrected in the web app after import.
+- To refresh after a roster change, click the **Refresh** button inside the frame.
 
-No environment variables are needed at runtime — all icons are static files bundled with the app.

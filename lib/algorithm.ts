@@ -107,10 +107,10 @@ function buildGroupsOnce(
     groups[i % groupCount].push(h[i]);
   }
 
-  // Fill remaining slots with DPS (each group gets up to 5 total players)
+  // Fill DPS slots — hard cap of 3 per group regardless of tank/healer shortage.
   let dpsIdx = 0;
   for (let i = 0; i < groupCount && dpsIdx < d.length; i++) {
-    const slotsAvailable = 5 - groups[i].length;
+    const slotsAvailable = Math.min(5 - groups[i].length, 3);
     for (let s = 0; s < slotsAvailable && dpsIdx < d.length; s++) {
       groups[i].push(d[dpsIdx++]);
     }
@@ -142,8 +142,8 @@ export function generateGroups(
   const activeTanks = shuffle(allTanks).slice(0, groupCount);
   const activeHealers = shuffle(allHealers).slice(0, groupCount);
 
-  // DPS fills all remaining slots across all groups
-  const dpsSlots = groupCount * 5 - activeTanks.length - activeHealers.length;
+  // Each group gets exactly 3 DPS slots regardless of tank/healer availability.
+  const dpsSlots = groupCount * 3;
   const activeDps = shuffle(allDps).slice(0, dpsSlots);
 
   const activeIds = new Set([
