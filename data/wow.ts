@@ -80,17 +80,13 @@ export function getRoleFromSpec(className: WowClass, specName: string): Role {
 // Bloodlust providers: class:spec combos
 export const BLOODLUST_PROVIDERS: Array<{ class: WowClass; spec?: string }> = [
   { class: 'Shaman' }, // all shaman specs
-  { class: 'Mage', spec: 'Arcane' },
-  { class: 'Mage', spec: 'Fire' },
-  { class: 'Mage', spec: 'Frost' },
-  { class: 'Hunter', spec: 'BeastMastery' },
+  { class: 'Mage' },
+  { class: 'Hunter' },
 ];
 
-export const COMBAT_REZ_PROVIDERS: WowClass[] = ['Druid', 'DeathKnight', 'Warlock'];
-export const BATTLE_SHOUT_PROVIDERS: WowClass[] = ['Warrior'];
-export const POWER_INFUSION_PROVIDERS: WowClass[] = ['Priest'];
+export const COMBAT_REZ_PROVIDERS: WowClass[] = ['Druid', 'DeathKnight', 'Warlock', 'Paladin'];
 
-export type BuffName = 'Bloodlust' | 'CombatRez' | 'BattleShout' | 'PowerInfusion';
+export type BuffName = 'Bloodlust' | 'CombatRez';
 
 export function hasBloodlust(players: { class: WowClass; spec: string }[]): boolean {
   return players.some((p) =>
@@ -104,10 +100,24 @@ export function getGroupBuffs(players: { class: WowClass; spec: string }[]): Buf
   const buffs: BuffName[] = [];
   if (hasBloodlust(players)) buffs.push('Bloodlust');
   if (players.some((p) => COMBAT_REZ_PROVIDERS.includes(p.class))) buffs.push('CombatRez');
-  if (players.some((p) => BATTLE_SHOUT_PROVIDERS.includes(p.class))) buffs.push('BattleShout');
-  if (players.some((p) => POWER_INFUSION_PROVIDERS.includes(p.class))) buffs.push('PowerInfusion');
   return buffs;
 }
+
+export const SPECS_BY_CLASS: Record<WowClass, string[]> = {
+  DeathKnight: ['Blood', 'Frost', 'Unholy'],
+  DemonHunter: ['Havoc', 'Vengeance'],
+  Druid:       ['Balance', 'Feral', 'Guardian', 'Restoration'],
+  Evoker:      ['Devastation', 'Augmentation', 'Preservation'],
+  Hunter:      ['BeastMastery', 'Marksmanship', 'Survival'],
+  Mage:        ['Arcane', 'Fire', 'Frost'],
+  Monk:        ['Brewmaster', 'Mistweaver', 'Windwalker'],
+  Paladin:     ['Holy', 'Protection', 'Retribution'],
+  Priest:      ['Discipline', 'Holy', 'Shadow'],
+  Rogue:       ['Assassination', 'Outlaw', 'Subtlety'],
+  Shaman:      ['Elemental', 'Enhancement', 'Restoration'],
+  Warlock:     ['Affliction', 'Demonology', 'Destruction'],
+  Warrior:     ['Arms', 'Fury', 'Protection'],
+};
 
 export function classSlug(className: WowClass): string {
   return className.toLowerCase().replace(/\s/g, '');

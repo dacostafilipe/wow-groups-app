@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# wow-groups
+
+WoW Mythic+ dungeon group organizer. Helps guild leaders distribute players into balanced groups of 5 (1 tank / 1 healer / 3 DPS) across multiple runs in a single evening session.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setting Up Icons (required for class/spec images)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Icons are downloaded once from the official Blizzard Game Data API and stored locally. The app makes no external requests at runtime.
 
-## Learn More
+### 1. Get Battle.net API credentials
 
-To learn more about Next.js, take a look at the following resources:
+1. Go to [https://develop.battle.net](https://develop.battle.net) and sign in with your Battle.net account
+2. Click **Create Client** and fill in the form:
+   - **Client Name:** anything (e.g. `wow-groups`)
+   - **Redirect URIs:** `http://localhost` (required but not used)
+   - **Service URL:** optional
+   - **Intended Use:** select *Game Data APIs*
+3. After creating the client, copy the **Client ID** and **Client Secret** from the client detail page
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. Configure your credentials
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cp .env.example .env
+```
 
-## Deploy on Vercel
+Edit `.env` and fill in your values:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+BNET_CLIENT_ID=your_client_id_here
+BNET_CLIENT_SECRET=your_client_secret_here
+BNET_REGION=eu   # or us, kr, tw
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Run the download script
+
+```bash
+node scripts/download-assets.js
+```
+
+This fetches all class and spec icons and saves them to `public/icons/`. The script is safe to re-run — it skips files that already exist.
+
+Icons are committed to the repo so this step only needs to be done once (or when new classes/specs are added to the game).
+
+## Deployment
+
+Deploy to Vercel with zero configuration:
+
+```bash
+npx vercel
+```
+
+No environment variables are needed at runtime — all icons are static files bundled with the app.

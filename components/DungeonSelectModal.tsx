@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { MIDNIGHT_DUNGEONS, SEASON1_ALL_NAMES } from '@/data/dungeons';
+import { Dungeon, DUNGEONS, SEASON1_ALL_NAMES } from '@/data/dungeons';
 
 interface Props {
   onConfirm: (dungeon: string) => void;
@@ -11,28 +11,26 @@ interface Props {
 
 type Tab = 'all' | 'season1';
 
-const ALL_DUNGEON_NAMES = [
-  ...MIDNIGHT_DUNGEONS.map((d) => d.name),
-  "Algeth'ar Academy",
-  "Pit of Saron",
-  "Seat of the Triumvirate",
-  "Skyreach",
+const LANGUAGES = [
+  { code: 'en', label: 'EN' },
+  { code: 'fr', label: 'FR' },
 ];
 
-const DEDUPED = Array.from(new Set(ALL_DUNGEON_NAMES));
-
 function DungeonCard({
-  name,
+  dungeon,
+  lang,
   selected,
   used,
   onClick,
 }: {
-  name: string;
+  dungeon: Dungeon;
+  lang: string;
   selected: boolean;
   used: boolean;
   onClick: () => void;
 }) {
   const borderColor = selected ? 'var(--gold-primary)' : used ? '#16a34a' : 'var(--border-subtle)';
+  const translation = lang !== 'en' ? dungeon.translations?.[lang] : undefined;
 
   return (
     <button
@@ -44,7 +42,7 @@ function DungeonCard({
         boxShadow: selected ? 'inset 0 1px 0 rgba(200,168,75,0.12)' : 'none',
       }}
     >
-      {/* Name */}
+      {/* Primary name */}
       <span
         className="text-sm leading-snug"
         style={{
@@ -53,8 +51,21 @@ function DungeonCard({
           fontFamily: 'var(--font-inter), system-ui, sans-serif',
         }}
       >
-        {name}
+        {translation ?? dungeon.name}
       </span>
+
+      {/* Original English name when a translation is shown */}
+      {translation && (
+        <span
+          className="text-xs mt-0.5 leading-snug"
+          style={{
+            color: 'var(--text-muted)',
+            fontFamily: 'var(--font-inter), system-ui, sans-serif',
+          }}
+        >
+          {dungeon.name}
+        </span>
+      )}
 
       {/* Corner indicator: green checkmark for already-run dungeons */}
       {used && !selected && (
@@ -73,15 +84,19 @@ export default function DungeonSelectModal({ onConfirm, onCancel, usedDungeons }
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('all');
   const [search, setSearch] = useState('');
+  const [lang, setLang] = useState('en');
 
   const visibleDungeons = useMemo(() => {
     const base = tab === 'season1'
-      ? DEDUPED.filter((name) => SEASON1_ALL_NAMES.has(name))
-      : DEDUPED;
+      ? DUNGEONS.filter((d) => SEASON1_ALL_NAMES.has(d.name))
+      : DUNGEONS;
     if (!search.trim()) return base;
     const q = search.toLowerCase();
-    return base.filter((name) => name.toLowerCase().includes(q));
-  }, [tab, search]);
+    return base.filter((d) => {
+      const translation = d.translations?.[lang] ?? '';
+      return d.name.toLowerCase().includes(q) || translation.toLowerCase().includes(q);
+    });
+  }, [tab, search, lang]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'all',     label: 'All Midnight' },
@@ -123,7 +138,7 @@ export default function DungeonSelectModal({ onConfirm, onCancel, usedDungeons }
           </button>
         </div>
 
-        {/* Tabs + search */}
+        {/* Tabs + search + language */}
         <div className="px-5 pt-3 pb-2 flex gap-3">
           <div className="flex gap-1 p-1 rounded-md" style={{ background: 'var(--bg-elevated)' }}>
             {tabs.map(({ id, label }) => (
@@ -155,6 +170,21 @@ export default function DungeonSelectModal({ onConfirm, onCancel, usedDungeons }
               caretColor: 'var(--gold-primary)',
             }}
           />
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value)}
+            className="px-2 py-1.5 rounded-md text-xs focus:outline-none"
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-inter), system-ui, sans-serif',
+            }}
+          >
+            {LANGUAGES.map(({ code, label }) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
+          </select>
         </div>
 
         {/* Legend */}
@@ -173,13 +203,14 @@ export default function DungeonSelectModal({ onConfirm, onCancel, usedDungeons }
             </p>
           ) : (
             <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-              {visibleDungeons.map((name) => (
+              {visibleDungeons.map((dungeon) => (
                 <DungeonCard
-                  key={name}
-                  name={name}
-                  selected={selected === name}
-                  used={usedDungeons.has(name)}
-                  onClick={() => setSelected(name)}
+                  key={dungeon.name}
+                  dungeon={dungeon}
+                  lang={lang}
+                  selected={selected === dungeon.name}
+                  used={usedDungeons.has(dungeon.name)}
+                  onClick={() => setSelected(dungeon.name)}
                 />
               ))}
             </div>

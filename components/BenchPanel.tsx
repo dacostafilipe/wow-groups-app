@@ -9,9 +9,11 @@ const BENCH_ID = 'bench';
 
 interface Props {
   players: Player[];
+  onRemovePlayer: (id: string) => void;
+  onEditPlayer: (id: string) => void;
 }
 
-export default function BenchPanel({ players }: Props) {
+export default function BenchPanel({ players, onRemovePlayer, onEditPlayer }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: BENCH_ID });
 
   return (
@@ -55,7 +57,7 @@ export default function BenchPanel({ players }: Props) {
           strategy={verticalListSortingStrategy}
         >
           {players.map((player) => (
-            <PlayerCard key={player.id} player={player} />
+            <PlayerCard key={player.id} player={player} onRemove={() => onRemovePlayer(player.id)} onEdit={() => onEditPlayer(player.id)} />
           ))}
         </SortableContext>
 

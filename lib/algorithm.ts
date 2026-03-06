@@ -5,7 +5,7 @@ import { hasBloodlust } from '@/data/wow';
 interface AlgorithmOptions {
   history: string[]; // sorted "idA:idB" pairs
   historyPenalty?: number; // 0–1, default 0.3
-  iterations?: number; // random restarts, default 500
+  iterations?: number; // random restarts, default 600
 }
 
 function avg(nums: number[]): number {
@@ -27,17 +27,12 @@ function scoreGroups(
   let total = 0;
 
   for (const group of groups) {
-    const ilvls = group.map((p) => p.ilvl);
-    const ratings = group.map((p) => p.rating);
+    const groupAvgIlvl = avg(group.map((p) => p.ilvl));
+    const groupAvgRating = avg(group.map((p) => p.rating));
 
-    const groupAvgIlvl = avg(ilvls);
-    const groupAvgRating = avg(ratings);
-
-    // Deviation from roster average (lower is better; invert to score)
     const ilvlScore = 1 - Math.abs(groupAvgIlvl - rosterAvgIlvl) / (rosterAvgIlvl || 1);
     const ratingScore = 1 - Math.abs(groupAvgRating - rosterAvgRating) / (rosterAvgRating || 1);
 
-    // History penalty
     let historyCount = 0;
     for (let i = 0; i < group.length; i++) {
       for (let j = i + 1; j < group.length; j++) {
@@ -47,7 +42,6 @@ function scoreGroups(
     const maxPairs = (group.length * (group.length - 1)) / 2;
     const historyScore = 1 - (historyCount / (maxPairs || 1)) * historyPenalty;
 
-    // Buff bonus
     const blBonus = hasBloodlust(group) ? 0.1 : 0;
 
     total += (ilvlScore + ratingScore) / 2 + historyScore + blBonus;
@@ -57,10 +51,8 @@ function scoreGroups(
 }
 
 function assignBloodlust(groups: Player[][]): void {
-  // Find groups with BL and groups without; try to ensure group[0] has BL
   const blGroupIdx = groups.findIndex((g) => hasBloodlust(g));
   if (blGroupIdx > 0) {
-    // Swap so the BL group is first (group 1 gets priority)
     [groups[0], groups[blGroupIdx]] = [groups[blGroupIdx], groups[0]];
   }
 }
@@ -88,37 +80,49 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+/**
+ * Build one candidate grouping.
+ * Distributes tanks and healers 1-per-group where available,
+ * then fills remaining slots with DPS. Never returns null.
+ */
 function buildGroupsOnce(
   tanks: Player[],
   healers: Player[],
-  dpsPlayers: Player[],
+  dps: Player[],
   groupCount: number,
-): Player[][] | null {
+): Player[][] {
   const t = shuffle(tanks);
   const h = shuffle(healers);
-  const d = shuffle(dpsPlayers);
-
-  if (t.length < groupCount || h.length < groupCount) return null;
+  const d = shuffle(dps);
 
   const groups: Player[][] = Array.from({ length: groupCount }, () => []);
 
-  // Assign 1 tank and 1 healer per group
-  for (let i = 0; i < groupCount; i++) {
-    groups[i].push(t[i]);
-    groups[i].push(h[i]);
+  // Assign 1 tank per group (as many as available)
+  for (let i = 0; i < t.length; i++) {
+    groups[i % groupCount].push(t[i]);
   }
 
-  // Distribute DPS across groups (3 per group), round-robin shuffled
-  const dpsNeeded = groupCount * 3;
-  const dpsPool = d.slice(0, dpsNeeded);
-  for (let i = 0; i < dpsPool.length; i++) {
-    groups[i % groupCount].push(dpsPool[i]);
+  // Assign 1 healer per group (as many as available)
+  for (let i = 0; i < h.length; i++) {
+    groups[i % groupCount].push(h[i]);
+  }
+
+  // Fill remaining slots with DPS (each group gets up to 5 total players)
+  let dpsIdx = 0;
+  for (let i = 0; i < groupCount && dpsIdx < d.length; i++) {
+    const slotsAvailable = 5 - groups[i].length;
+    for (let s = 0; s < slotsAvailable && dpsIdx < d.length; s++) {
+      groups[i].push(d[dpsIdx++]);
+    }
   }
 
   return groups;
 }
 
-export function generateGroups(players: Player[], options: AlgorithmOptions): { groups: Group[]; bench: Player[] } {
+export function generateGroups(
+  players: Player[],
+  options: AlgorithmOptions,
+): { groups: Group[]; bench: Player[] } {
   const { history, historyPenalty = 0.3, iterations = 600 } = options;
   const historySet = new Set(history);
 
@@ -130,47 +134,34 @@ export function generateGroups(players: Player[], options: AlgorithmOptions): { 
 
   const { tanks, healers, dps } = partitionByRole(players);
 
-  // Handle fallback roles: move players to their fallback pool if needed
-  const allDps = [...dps];
   const allTanks = [...tanks];
   const allHealers = [...healers];
+  const allDps = [...dps];
 
-  // Ensure we have enough tanks and healers; fill from fallback
-  while (allTanks.length < groupCount) {
-    const fb = allDps.findIndex((p) => p.fallbackRole === 'tank');
-    if (fb === -1) break;
-    allTanks.push(...allDps.splice(fb, 1));
-  }
-  while (allHealers.length < groupCount) {
-    const fb = allDps.findIndex((p) => p.fallbackRole === 'healer');
-    if (fb === -1) break;
-    allHealers.push(...allDps.splice(fb, 1));
-  }
+  // Shuffle each pool before slicing so bench players rotate fairly
+  const activeTanks = shuffle(allTanks).slice(0, groupCount);
+  const activeHealers = shuffle(allHealers).slice(0, groupCount);
 
-  // Players that can't fit are benched
-  const activePlayers = [
-    ...allTanks.slice(0, groupCount),
-    ...allHealers.slice(0, groupCount),
-    ...allDps.slice(0, groupCount * 3),
-  ];
-  const bench: Player[] = [
-    ...players.filter((p) => !activePlayers.find((a) => a.id === p.id)),
-  ];
+  // DPS fills all remaining slots across all groups
+  const dpsSlots = groupCount * 5 - activeTanks.length - activeHealers.length;
+  const activeDps = shuffle(allDps).slice(0, dpsSlots);
 
-  const rosterAvgIlvl = avg(activePlayers.map((p) => p.ilvl));
-  const rosterAvgRating = avg(activePlayers.map((p) => p.rating));
+  const activeIds = new Set([
+    ...activeTanks.map((p) => p.id),
+    ...activeHealers.map((p) => p.id),
+    ...activeDps.map((p) => p.id),
+  ]);
+  const bench = players.filter((p) => !activeIds.has(p.id));
+
+  const allActive = [...activeTanks, ...activeHealers, ...activeDps];
+  const rosterAvgIlvl = avg(allActive.map((p) => p.ilvl));
+  const rosterAvgRating = avg(allActive.map((p) => p.rating));
 
   let bestScore = -Infinity;
-  let bestGroups: Player[][] | null = null;
-
-  const useTanks = allTanks.slice(0, groupCount);
-  const useHealers = allHealers.slice(0, groupCount);
-  const useDps = allDps.slice(0, groupCount * 3);
+  let bestGroups: Player[][] = buildGroupsOnce(activeTanks, activeHealers, activeDps, groupCount);
 
   for (let i = 0; i < iterations; i++) {
-    const candidate = buildGroupsOnce(useTanks, useHealers, useDps, groupCount);
-    if (!candidate) continue;
-
+    const candidate = buildGroupsOnce(activeTanks, activeHealers, activeDps, groupCount);
     const score = scoreGroups(candidate, rosterAvgIlvl, rosterAvgRating, historySet, historyPenalty);
     if (score > bestScore) {
       bestScore = score;
@@ -178,18 +169,11 @@ export function generateGroups(players: Player[], options: AlgorithmOptions): { 
     }
   }
 
-  if (!bestGroups) {
-    // Fallback: just divide naively
-    bestGroups = Array.from({ length: groupCount }, (_, i) =>
-      activePlayers.slice(i * 5, i * 5 + 5)
-    );
-  }
-
   assignBloodlust(bestGroups);
 
-  const groups: Group[] = bestGroups.map((players) => ({
+  const groups: Group[] = bestGroups.map((groupPlayers) => ({
     id: uuidv4(),
-    players,
+    players: groupPlayers,
   }));
 
   return { groups, bench };

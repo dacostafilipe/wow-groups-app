@@ -10,13 +10,13 @@ import PlayerCard from './PlayerCard';
 interface Props {
   group: Group;
   index: number;
+  onRemovePlayer: (id: string) => void;
+  onEditPlayer: (id: string) => void;
 }
 
-const BUFF_LABELS: Record<BuffName, { label: string; title: string }> = {
-  Bloodlust: { label: 'BL', title: 'Bloodlust / Heroism' },
-  CombatRez: { label: 'CR', title: 'Combat Resurrection' },
-  BattleShout: { label: 'BS', title: 'Battle Shout' },
-  PowerInfusion: { label: 'PI', title: 'Power Infusion' },
+const BUFF_ICONS: Partial<Record<BuffName, { src: string; title: string }>> = {
+  Bloodlust: { src: '/icons/buffs/bloodlust.jpg', title: 'Bloodlust / Heroism' },
+  CombatRez: { src: '/icons/buffs/battlerez.jpg', title: 'Combat Resurrection' },
 };
 
 function avg(nums: number[]) {
@@ -24,7 +24,7 @@ function avg(nums: number[]) {
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
 }
 
-export default function GroupPanel({ group, index }: Props) {
+export default function GroupPanel({ group, index, onRemovePlayer, onEditPlayer }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: group.id });
 
   const issues = validateGroup(group);
@@ -69,21 +69,21 @@ export default function GroupPanel({ group, index }: Props) {
           Group {index + 1}
         </h3>
         <div className="flex gap-1">
-          {buffs.map((b) => (
-            <span
-              key={b}
-              title={BUFF_LABELS[b].title}
-              className="text-xs px-1.5 py-0.5 rounded"
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--gold-dim)',
-                color: 'var(--gold-primary)',
-                fontSize: '0.65rem',
-              }}
-            >
-              {BUFF_LABELS[b].label}
-            </span>
-          ))}
+          {(Object.entries(BUFF_ICONS) as [BuffName, { src: string; title: string }][]).map(([b, icon]) => {
+            const present = buffs.includes(b);
+            return (
+              <img
+                key={b}
+                src={icon.src}
+                alt={icon.title}
+                title={present ? icon.title : `Missing: ${icon.title}`}
+                width={22}
+                height={22}
+                className="rounded-sm"
+                style={{ filter: present ? 'none' : 'grayscale(1) opacity(0.35)' }}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export default function GroupPanel({ group, index }: Props) {
           strategy={verticalListSortingStrategy}
         >
           {group.players.map((player) => (
-            <PlayerCard key={player.id} player={player} />
+            <PlayerCard key={player.id} player={player} onRemove={() => onRemovePlayer(player.id)} onEdit={() => onEditPlayer(player.id)} />
           ))}
         </SortableContext>
 

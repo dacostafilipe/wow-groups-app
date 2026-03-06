@@ -8,32 +8,24 @@ import { CLASS_COLORS, classSlug, specSlug } from '@/data/wow';
 interface Props {
   player: Player;
   isDragging?: boolean;
+  onRemove?: () => void;
+  onEdit?: () => void;
 }
 
-function RoleIcon({ role, color }: { role: Player['role']; color: string }) {
-  if (role === 'tank') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-      </svg>
-    );
-  }
-  if (role === 'healer') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
-        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
-      </svg>
-    );
-  }
-  // dps
+function RoleIcon({ role }: { role: Player['role'] }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
-      <path d="M13.5 0.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67z" />
-    </svg>
+    <img
+      src={`/icons/roles/${role}.png`}
+      alt={role}
+      width={30}
+      height={30}
+      title={role.charAt(0).toUpperCase() + role.slice(1)}
+      style={{ flexShrink: 0 }}
+    />
   );
 }
 
-export default function PlayerCard({ player, isDragging }: Props) {
+export default function PlayerCard({ player, isDragging, onRemove, onEdit }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, active } = useSortable({
     id: player.id,
   });
@@ -52,7 +44,7 @@ export default function PlayerCard({ player, isDragging }: Props) {
       style={style}
       {...attributes}
       {...listeners}
-      className="rounded-md select-none cursor-grab active:cursor-grabbing"
+      className="group rounded-md select-none cursor-grab active:cursor-grabbing"
       data-dragging={isActive || isDragging}
     >
       <div
@@ -65,65 +57,83 @@ export default function PlayerCard({ player, isDragging }: Props) {
           boxShadow: isActive ? `0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px ${classColor}44` : 'none',
         }}
       >
-        <div className="px-2.5 py-2">
-          {/* Top row: icons + role */}
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5">
-              {/* Class icon */}
-              <img
-                src={`/icons/classes/${classSlug(player.class)}.jpg`}
-                alt={player.class}
-                width={20}
-                height={20}
-                className="rounded-sm"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              {/* Spec icon */}
-              <img
-                src={`/icons/specs/${specSlug(player.class, player.spec)}.jpg`}
-                alt={player.spec}
-                width={16}
-                height={16}
-                className="rounded-sm opacity-80"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
+        <div className="px-2.5 py-2 relative">
+          {/* Action buttons (edit + remove), revealed on hover */}
+          {(onEdit || onRemove) && (
+            <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {onEdit && (
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  title="Edit player"
+                  className="w-6 h-6 flex items-center justify-center rounded text-sm leading-none hover:brightness-125 active:brightness-75"
+                  style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                >
+                  ✎
+                </button>
+              )}
+              {onRemove && (
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                  title="Remove player"
+                  className="w-6 h-6 flex items-center justify-center rounded text-sm leading-none hover:brightness-125 active:brightness-75"
+                  style={{ color: '#f87171', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
-            <RoleIcon role={player.role} color={classColor} />
-          </div>
-
-          {/* Name */}
-          <div
-            className="text-sm font-semibold leading-tight truncate"
-            style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-cinzel), serif' }}
-          >
-            {player.name}
+          )}
+          {/* Top row: name + role icon */}
+          <div className="flex items-start justify-between gap-1 mb-1.5">
+            <div
+              className="leading-tight truncate"
+              style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-inter), system-ui, sans-serif', fontWeight: 500, fontSize: '1.20rem' }}
+            >
+              {player.name}
+            </div>
+            <RoleIcon role={player.role} />
           </div>
 
           {/* Spec */}
           <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
             {player.spec}
-            {player.fallbackRole && (
-              <span className="ml-1 opacity-60">/ {player.fallbackRole}</span>
-            )}
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-3 mt-2">
-            <div className="flex flex-col">
-              <span className="text-xs" style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>ilvl</span>
-              <span className="text-sm font-medium" style={{ color: classColor }}>
-                {player.ilvl}
-              </span>
+          {/* Stats + class/spec icons */}
+          <div className="flex items-end justify-between mt-2">
+            <div className="flex gap-3">
+              <div className="flex flex-col">
+                <span className="text-xs" style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>ilvl</span>
+                <span className="text-sm font-medium" style={{ color: classColor }}>
+                  {player.ilvl}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs" style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>M+</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {player.rating > 0 ? player.rating.toLocaleString() : '—'}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs" style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>M+</span>
-              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {player.rating > 0 ? player.rating.toLocaleString() : '—'}
-              </span>
+            <div className="flex items-center gap-1">
+              <img
+                src={`/icons/classes/${classSlug(player.class)}.jpg`}
+                alt={player.class}
+                width={30}
+                height={30}
+                className="rounded-sm"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <img
+                src={`/icons/specs/${specSlug(player.class, player.spec)}.jpg`}
+                alt={player.spec}
+                width={30}
+                height={30}
+                className="rounded-sm opacity-80"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
             </div>
           </div>
         </div>

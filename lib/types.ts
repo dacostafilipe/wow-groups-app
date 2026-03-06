@@ -21,7 +21,6 @@ export interface Player {
   class: WowClass;
   spec: string;
   role: Role;
-  fallbackRole?: Role;
   ilvl: number;
   rating: number;
 }
@@ -31,13 +30,22 @@ export interface Group {
   players: Player[];
 }
 
+export type ActivityEventType = 'run_started' | 'reshuffled';
+
+export interface ActivityEvent {
+  type: ActivityEventType;
+  runCount: number;
+  timestamp: number; // Date.now()
+  dungeon?: string;  // set when type === 'run_started'
+}
+
 export interface Session {
   players: Player[];
   groups: Group[];
   bench: Player[];
   runCount: number;
-  // history: set of sorted "playerA:playerB" pairs that have played together
   history: string[];
+  activityLog: ActivityEvent[];
 }
 
 export interface ValidationIssue {

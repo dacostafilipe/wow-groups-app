@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { Player, WowClass } from '@/lib/types';
 import { parseRosterText } from '@/lib/parser';
-import { CLASS_COLORS, getRoleFromSpec } from '@/data/wow';
+import { CLASS_COLORS, getRoleFromSpec, SPECS_BY_CLASS } from '@/data/wow';
 
-const ROLES = ['tank', 'healer', 'dps'] as const;
+function displayName(s: string): string {
+  return s.replace(/([A-Z])/g, ' $1').trim();
+}
+
 const CLASSES: WowClass[] = [
   'DeathKnight', 'DemonHunter', 'Druid', 'Evoker', 'Hunter',
   'Mage', 'Monk', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior',
@@ -33,7 +36,10 @@ export default function ImportScreen({ onConfirm }: Props) {
       prev.map((p) => {
         if (p.id !== id) return p;
         const updated = { ...p, [field]: value };
-        // Re-derive role if class or spec changed
+        if (field === 'class') {
+          // Reset spec to first valid spec for the new class
+          updated.spec = SPECS_BY_CLASS[updated.class][0];
+        }
         if (field === 'class' || field === 'spec') {
           updated.role = getRoleFromSpec(updated.class, updated.spec);
         }
@@ -192,7 +198,6 @@ Garrosh|Warrior|Arms|616|2500`;
                     <th className="text-left py-2 pr-3 font-normal font-display" style={{ fontFamily: 'var(--font-cinzel), serif' }}>Class</th>
                     <th className="text-left py-2 pr-3 font-normal font-display" style={{ fontFamily: 'var(--font-cinzel), serif' }}>Spec</th>
                     <th className="text-left py-2 pr-3 font-normal font-display" style={{ fontFamily: 'var(--font-cinzel), serif' }}>Role</th>
-                    <th className="text-left py-2 pr-3 font-normal font-display" style={{ fontFamily: 'var(--font-cinzel), serif' }}>Fallback</th>
                     <th className="text-left py-2 pr-3 font-normal font-display" style={{ fontFamily: 'var(--font-cinzel), serif' }}>ilvl</th>
                     <th className="text-left py-2 font-normal font-display" style={{ fontFamily: 'var(--font-cinzel), serif' }}>M+ Rating</th>
                   </tr>
@@ -221,13 +226,16 @@ Garrosh|Warrior|Arms|616|2500`;
                         </select>
                       </td>
                       <td className="py-2 pr-3">
-                        <input
-                          type="text"
-                          value={p.spec}
+                        <select
+                          value={SPECS_BY_CLASS[p.class].includes(p.spec) ? p.spec : SPECS_BY_CLASS[p.class][0]}
                           onChange={(e) => updatePlayer(p.id, 'spec', e.target.value)}
-                          className="text-sm rounded px-2 py-0.5 w-28"
+                          className="text-sm rounded px-1 py-0.5"
                           style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                        />
+                        >
+                          {SPECS_BY_CLASS[p.class].map((s) => (
+                            <option key={s} value={s}>{displayName(s)}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="py-2 pr-3">
                         <span className="capitalize text-xs px-2 py-0.5 rounded" style={{
@@ -237,19 +245,6 @@ Garrosh|Warrior|Arms|616|2500`;
                         }}>
                           {p.role}
                         </span>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <select
-                          value={p.fallbackRole ?? ''}
-                          onChange={(e) => updatePlayer(p.id, 'fallbackRole', e.target.value)}
-                          className="text-sm rounded px-1 py-0.5"
-                          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
-                        >
-                          <option value="">—</option>
-                          {ROLES.filter((r) => r !== p.role).map((r) => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                        </select>
                       </td>
                       <td className="py-2 pr-3">
                         <input

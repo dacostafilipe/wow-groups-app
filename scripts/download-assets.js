@@ -105,18 +105,27 @@ async function getToken() {
 }
 
 async function apiGet(token, path) {
-  const url = `${API_BASE}${path}?namespace=${NAMESPACE}&locale=${LOCALE}&access_token=${token}`;
-  const res = await fetch(url);
-  if (res.status !== 200) throw new Error(`API error ${res.status} for ${url}`);
+  const url = `${API_BASE}${path}?namespace=${NAMESPACE}&locale=${LOCALE}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status !== 200) {
+    throw new Error(`API error ${res.status} for ${url}\nResponse: ${res.body.toString().slice(0, 300)}`);
+  }
   return JSON.parse(res.body.toString());
 }
 
-async function downloadFile(url, destPath) {
+async function downloadFile(url, destPath, extraHeaders = {}) {
   if (fs.existsSync(destPath)) {
     console.log(`  → Already exists, skipping: ${path.basename(destPath)}`);
     return;
   }
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      ...extraHeaders,
+    },
+  });
   if (res.status !== 200) throw new Error(`Download failed ${res.status} for ${url}`);
   fs.writeFileSync(destPath, res.body);
   console.log(`  ✓ Downloaded: ${path.basename(destPath)}`);
@@ -134,7 +143,7 @@ async function main() {
   for (const cls of classIndex.classes) {
     console.log(`Processing class: ${cls.name}`);
     try {
-      const media = await apiGet(token, `/data/wow/playable-class/${cls.id}/media`);
+      const media = await apiGet(token, `/data/wow/media/playable-class/${cls.id}`);
       const iconAsset = media.assets?.find((a) => a.key === 'icon');
       if (!iconAsset) { console.log(`  ! No icon for ${cls.name}`); continue; }
 
@@ -155,7 +164,7 @@ async function main() {
     try {
       const specDetail = await apiGet(token, `/data/wow/playable-specialization/${spec.id}`);
       const className = specDetail.playable_class?.name ?? 'Unknown';
-      const media = await apiGet(token, `/data/wow/playable-specialization/${spec.id}/media`);
+      const media = await apiGet(token, `/data/wow/media/playable-specialization/${spec.id}`);
       const iconAsset = media.assets?.find((a) => a.key === 'icon');
       if (!iconAsset) { console.log(`  ! No icon for ${spec.name}`); continue; }
 

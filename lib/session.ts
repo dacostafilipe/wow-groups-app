@@ -30,5 +30,6 @@ export function emptySession(): Session {
     bench: [],
     runCount: 0,
     history: [],
+    activityLog: [],
   };
 }
